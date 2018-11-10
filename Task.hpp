@@ -7,22 +7,19 @@
 #include "ThreadPool.hpp"
 #include "XSignal.hpp"
 
-template <class Type>
-class Task{};
-
-template <>
-class Task<void()>{
+class Task{
 public:
     Task(std::function<void()> func,ThreadPool::TaskPriority priority = ThreadPool::TaskPriority::DEFAULT);
-    Task(const Task<void()> &) = delete;
-    Task(Task<void()> &&) = default;
+    Task(const Task &) = delete;
+    Task(Task &&) = default;
     ~Task() = default;
     
-    Task &operator=(const Task<void()> &) = delete;
-    Task &operator=(Task<void()> &&) = default;
+    Task &operator=(const Task &) = delete;
+    Task &operator=(Task &&) = default;
 
     void run();
-    Task<void()> &then(Task<void()> &&task);
+    Task &then(Task &&task);
+    Task &then(std::function<void()> task,ThreadPool::TaskPriority priority = ThreadPool::TaskPriority::DEFAULT);
     
     Signal<void()> onComplete;
     
@@ -30,29 +27,32 @@ protected:
 private:
     std::function<void()> m_funcs;
     ThreadPool::TaskPriority m_priority;
-    std::unique_ptr<Task<void()>> m_then;
+    std::unique_ptr<Task> m_then;
 };
 
-template<>
-Task<void()>::Task(std::function<void()> func,ThreadPool::TaskPriority priority = ThreadPool::TaskPriority::DEFAULT)
+Task::Task(std::function<void()> func,ThreadPool::TaskPriority priority)
     :m_funcs(func),
      m_priority(priority),
      m_then(nullptr){}
-     
-template<>
-void Task<void()>::run(){
-    ThreadPool::instance().addTask(m_priority,[&onComplete,&m_funcs]()->void{
+
+void Task::run(){
+    auto f = ThreadPool::instance().addTask(m_priority,[this]()->void{
         m_funcs();
         onComplete.emit();
-        if(m_then)m_then.run();
+        if(m_then)m_then->run();
     });
+    f.get();
 }
 
-template<>
-Task<void()> &Task<void()>::then(Task<void()> &&task){
-    m_then = std::make_unique<Task<void>>(std::move(task));
+Task &Task::then(Task &&task){
+    m_then = std::make_unique<Task>(std::move(task));
     return *m_then;
 }
-     
+
+Task &Task::then(std::function<void()> task, ThreadPool::TaskPriority priority) {
+    m_then = std::make_unique<Task>(task,priority);
+    return  *m_then;
+}
+
 
 #endif //_XTASK_TASK_H_

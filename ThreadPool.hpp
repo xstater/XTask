@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <vector>
 #include <functional>
+#include <utility>
 
 class ThreadPool{
     public:
@@ -43,7 +44,7 @@ class ThreadPool{
     private:
         struct Task{
             Task(TaskPriority priority,std::function<void()> task)
-                :m_priority(priority),m_task(task){}
+                :m_priority(priority),m_task(std::move(task)){}
             friend bool operator<(Task a,Task b){
                 return a.m_priority > b.m_priority;
             }
@@ -113,7 +114,7 @@ auto ThreadPool::addTask(TaskPriority priority,Function &&f,ArgsType &&...args)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         if(m_is_quit){
-            throw std::runtime_error("ThreadPool:Add task failed!");
+            //throw std::runtime_error("ThreadPool:Add task failed!");
         }
         m_tasks.emplace(priority,[task]()->void{(*task)();});
     }
