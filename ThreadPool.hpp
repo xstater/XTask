@@ -70,12 +70,12 @@ ThreadPool::ThreadPool(uint size)
             std::function<void()> task;
             while(true){
                 {
-                    std::unique_lock<std::mutex> lock(this->m_mutex);
-                    this->m_cond.wait(lock,
-                        [this]()->bool{return this->m_is_quit || !this->m_tasks.empty();});
-                    if(this->m_is_quit && this->m_tasks.empty())return;
-                    task = std::move(this->m_tasks.top().m_task);
-                    this->m_tasks.pop();
+                    std::unique_lock<std::mutex> lock(m_mutex);
+                    m_cond.wait(lock,
+                        [this]()->bool{return m_is_quit || !m_tasks.empty();});
+                    if(m_is_quit && m_tasks.empty())return;
+                    task = m_tasks.top().m_task;
+                    m_tasks.pop();
                 }
                 task();
             }
@@ -85,7 +85,7 @@ ThreadPool::ThreadPool(uint size)
 
 void ThreadPool::quit(){
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         if(m_is_quit)return;
         else m_is_quit = true;
     }
@@ -109,13 +109,10 @@ template <class Function,class... ArgsType>
 auto ThreadPool::addTask(TaskPriority priority,Function &&f,ArgsType &&...args)
     -> std::future<typename std::result_of<Function(ArgsType...)>::type>{
     using ReturnType = typename std::result_of<Function(ArgsType...)>::type;
-    auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<Function>(f),std::forward<ArgsType>(args)...));
+    auto task = std::make_shared<std::packaged_task<ReturnType(ArgsType...)>>(std::bind(std::forward<Function>(f),std::forward<ArgsType>(args)...));
     std::future<ReturnType> ans = task->get_future();
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        if(m_is_quit){
-            //throw std::runtime_error("ThreadPool:Add task failed!");
-        }
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_tasks.emplace(priority,[task]()->void{(*task)();});
     }
     m_cond.notify_one();

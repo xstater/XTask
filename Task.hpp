@@ -25,32 +25,32 @@ public:
     
 protected:
 private:
-    std::function<void()> m_funcs;
+    std::function<void()> m_func;
     ThreadPool::TaskPriority m_priority;
     std::unique_ptr<Task> m_then;
 };
 
 Task::Task(std::function<void()> func,ThreadPool::TaskPriority priority)
-    :m_funcs(func),
+    :m_func(std::move(func)),
      m_priority(priority),
      m_then(nullptr){}
 
 void Task::run(){
-    auto f = ThreadPool::instance().addTask(m_priority,[this]()->void{
-        m_funcs();
+    ThreadPool::instance().addTask(m_priority,[this]()->void{
+        m_func();
         onComplete.emit();
-        if(m_then)m_then->run();
     });
-    f.get();
 }
 
 Task &Task::then(Task &&task){
     m_then = std::make_unique<Task>(std::move(task));
+    onComplete.connect([this]()->void{m_then->run();});
     return *m_then;
 }
 
 Task &Task::then(std::function<void()> task, ThreadPool::TaskPriority priority) {
-    m_then = std::make_unique<Task>(task,priority);
+    m_then = std::make_unique<Task>(std::move(task),priority);
+    onComplete.connect([this]()->void{m_then->run();});
     return  *m_then;
 }
 
