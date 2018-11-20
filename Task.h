@@ -1,17 +1,21 @@
 #ifndef _XTASK_TASK_H_
 #define _XTASK_TASK_H_
 
+#include <functional>
 #include <future>
-#include "XSignal.hpp"
+#include "return_type.h"
 
 namespace xtask{
-
-    template <class ReturnType>
+    template <class Type>
     class Task{
     public:
-        template <class Function,class...ArgsType>
-        Task(Function &&func,ArgsType&&...args)
-            :m_function(std::bind(std::forward(func),std::forward(args)...)){}
+        Task() = default;
+        template <class Function>
+        Task(Function &&function)
+            :m_function(std::forward<Function>(function)),
+             m_result(),
+             m_is_done(false),
+             m_exception(nullptr){}
         Task(const Task &) = delete;
         Task(Task &&) = default;
         ~Task() = default;
@@ -19,20 +23,43 @@ namespace xtask{
         Task &operator=(const Task &) = delete;
         Task &operator=(Task &&) = default;
 
-        std::future<ReturnType> get_future(){ m_promise.get_future(); }
-
-        void operator()()noexcept{
-            try {
-                m_promise.set_value(m_function());
-            }catch(std::exception &e){
-                m_promise.set_exception(e);
-            }
+        void operator()() {
+            m_result = m_function();
         }
+
+        void run();
+
+        template <class Function>
+        auto then(Function &&func) -> Task<return_type_t<Function>>{
+            return Task<return_type_t<Function>>(std::bind(std::forward<Function>(func),m_result));
+        }
+
+        Type get(){
+            while(!m_is_done && !m_exception){}
+            return m_result;
+        }
+
+        void wait(){
+
+        }
+
+        template<>
+        void wait_for(){
+
+        }
+
+        template<>
+        void wait_until(){
+
+        }
+
 
     protected:
     private:
-        std::function<ReturnType()> m_function;
-        std::promise<ReturnType> m_promise;
+        std::function<Type()> m_function;
+        Type m_result;
+        bool m_is_done;
+        std::exception_ptr m_exception;
     };
 }
 

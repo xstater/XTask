@@ -1,4 +1,4 @@
-#ifndef _XSIGNAL_HPP_
+ #ifndef _XSIGNAL_HPP_
 #define _XSIGNAL_HPP_
 
 #include <list>
