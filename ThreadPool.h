@@ -1,8 +1,15 @@
-//
-// Created by admin on 2018/11/16.
-//
+#ifndef _XTASK_THREAD_POOL_H_
+#define _XTASK_THREAD_POOL_H_
 
-#ifndef XTASK_THREADPOOL_H
-#define XTASK_THREADPOOL_H
+#include "Task.h"
 
-#endif //XTASK_THREADPOOL_H
+namespace xtask{
+    class ThreadPool{
+    public:
+
+    protected:
+    private:
+    };
+}
+
+#endif //_XTASK_THREAD_POOL_H_
