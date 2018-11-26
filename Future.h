@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <memory>
+#include <chrono>
 #include "return_type.h"
 #include "ThreadPool.h"
 
@@ -82,6 +83,15 @@ namespace xtask{
         }
         void wait()const noexcept{
             while(m_future->m_status != Status::done && !m_future->m_exception){}
+        }
+        
+        template <class Rep,class Period>
+        State wait_for(const std::chrono::duration<Rep,Period>& timeout_duration)const{
+            
+        }
+        template <class Clock,class Duration>
+        State wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time)const{
+            
         }
 
         template <class Function>
