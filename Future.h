@@ -26,7 +26,7 @@ namespace xtask{
         ~FutureThenError() = default;
         
         const char *what() const noexcept{
-            return "Future: then() can only be invoked once!"
+            return "Future: then() can only be invoked once!";
         }
     protected:
     private:
@@ -86,12 +86,20 @@ namespace xtask{
         }
         
         template <class Rep,class Period>
-        State wait_for(const std::chrono::duration<Rep,Period>& timeout_duration)const{
-            
+        Status wait_for(const std::chrono::duration<Rep,Period>& timeout_duration)const{
+            auto start = std::chrono::steady_clock::now();
+
+            auto end = std::chrono::steady_clock::now();
+            while(end - start < timeout_duration && m_future->m_status != Status::done){
+                end = std::chrono::steady_clock::now();
+            }
+
+            return m_future->m_status;
         }
         template <class Clock,class Duration>
-        State wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time)const{
-            
+        Status wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time)const{
+            while(std::chrono::steady_clock::now() < timeout_time && m_future->m_status != Status::done){}
+            return m_future->m_status;
         }
 
         template <class Function>
@@ -146,6 +154,23 @@ namespace xtask{
         }
         void wait()const noexcept{
             while(m_future->m_status != Status::done && !m_future->m_exception){}
+        }
+
+        template <class Rep,class Period>
+        Status wait_for(const std::chrono::duration<Rep,Period>& timeout_duration)const{
+            auto start = std::chrono::steady_clock::now();
+
+            auto end = std::chrono::steady_clock::now();
+            while(end - start < timeout_duration && m_future->m_status != Status::done){
+                end = std::chrono::steady_clock::now();
+            }
+
+            return m_future->m_status;
+        }
+        template <class Clock,class Duration>
+        Status wait_until(const std::chrono::time_point<Clock,Duration>& timeout_time)const{
+            while(std::chrono::steady_clock::now() < timeout_time && m_future->m_status != Status::done){}
+            return m_future->m_status;
         }
 
         template <class Function>
