@@ -44,18 +44,35 @@ namespace xtask{
     }
 
     template <class Iterator>
-    auto when_any(Iterator begin,Iterator end) -> typename std::iterator_traits<Iterator>::value_type{
+    auto when_any(Iterator begin,Iterator end) -> Future<void>{
         using FutureType = typename std::iterator_traits<Iterator>::value_type;
 
-        auto future_ptr = std::make_shared<typename FutureType::value_type>();
+        auto future_ptr = std::make_shared<FutureBase<void>>();
         auto flag_ptr = std::make_shared<std::atomic<bool>>(false);
         
-        future_ptr->m_status = Statue::running;
+        future_ptr->m_status = Status::running;
         for(auto itr = begin;itr != end;++itr){
-            itr->then();
+            itr->then([future_ptr,flag_ptr](FutureType f)->void{
+                if(flag_ptr->load())return;
+                flag_ptr->store(true);
+                future_ptr->m_status = Status::done;
+                if(future_ptr->m_then){
+                    switch(future_ptr->m_then_policy){
+                        case Policy::pool:
+                            ThreadPool::instance().addTask(future_ptr->m_then);
+                            break;
+                        case Policy::thread:
+                            std::async(std::launch::async,future_ptr->m_then);
+                            break;
+                        case Policy::synchronized:
+                            future_ptr->m_then();
+                            break;
+                    }
+                }
+            });
         }
 
-        return FutureType(future_ptr);
+        return Future<void>(future_ptr);
     }
 }
 
