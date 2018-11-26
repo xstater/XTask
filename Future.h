@@ -18,6 +18,18 @@ namespace xtask{
         running,
         done
     };
+    
+    class FutureThenError:public std::exception{
+    public:
+        FutureThenError() = default;
+        ~FutureThenError() = default;
+        
+        const char *what() const noexcept{
+            return "Future: then() can only be invoked once!"
+        }
+    protected:
+    private:
+    };
 
     template <class Type>
     struct FutureBase{
@@ -74,6 +86,7 @@ namespace xtask{
 
         template <class Function>
         auto then(Function &&function,Policy policy = Policy::pool) -> Future<return_type_t<Function>>{
+            if(m_future->m_then)throw FutureThenError();
             auto ptr = std::make_shared<FutureBase<return_type_t<Function>>>();
             m_future->m_then_policy = policy;
             m_future->m_then = [ptr,function,this]()->void{
@@ -127,6 +140,7 @@ namespace xtask{
 
         template <class Function>
         auto then(Function &&function,Policy policy = Policy::pool) -> Future<return_type_t<Function>>{
+            if(m_future->m_then)throw FutureThenError();
             auto ptr = std::make_shared<FutureBase<return_type_t<Function>>>();
             m_future->m_then_policy = policy;
             m_future->m_then = [ptr,function,this]()->void{
