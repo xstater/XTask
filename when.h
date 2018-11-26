@@ -46,11 +46,14 @@ namespace xtask{
     template <class Iterator>
     auto when_any(Iterator begin,Iterator end) -> typename std::iterator_traits<Iterator>::value_type{
         using FutureType = typename std::iterator_traits<Iterator>::value_type;
-        using DifferenceType = typename std::iterator_traits<Iterator>::difference_type;
 
         auto future_ptr = std::make_shared<typename FutureType::value_type>();
-
-
+        auto flag_ptr = std::make_shared<std::atomic<bool>>(false);
+        
+        future_ptr->m_status = Statue::running;
+        for(auto itr = begin;itr != end;++itr){
+            itr->then();
+        }
 
         return FutureType(future_ptr);
     }
