@@ -9,10 +9,12 @@ namespace xtask{
     class Task{
     public:
         template <class Function>
-        Task(Function &&function,Policy policy = Policy::pool)
+        Task(Function &&function,Policy policy = Policy::pool,bool auto_run = false)
             :m_function(std::forward<Function>(function)),
              m_policy(policy),
-             m_future(std::make_shared<FutureBase<Type>>()){}
+             m_future(std::make_shared<FutureBase<Type>>()){
+             if(auto_run) run();
+         }
         Task(const Task &) = delete;
         Task(Task &&) = default;
         ~Task() = default;
@@ -111,10 +113,12 @@ namespace xtask{
     class Task<void>{
     public:
         template <class Function>
-        Task(Function &&function,Policy policy = Policy::pool)
+        Task(Function &&function,Policy policy = Policy::pool,bool auto_run = false)
                 :m_function(std::forward<Function>(function)),
                  m_policy(policy),
-                 m_future(std::make_shared<FutureBase<void>>()){}
+                 m_future(std::make_shared<FutureBase<void>>()){
+            if(auto_run) run();
+         }
         Task(const Task &) = delete;
         Task(Task &&) = default;
         ~Task() = default;
