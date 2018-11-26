@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <initializer_list>
+#include <atomic>
 #include "Future.h"
 
 namespace xtask{
@@ -19,6 +20,15 @@ namespace xtask{
     protected:
     private:
         std::shared_ptr<FutureBase<void>> m_future;
+        std::atomic<int> m_counter;
+    };
+    
+    template <class Type>
+    class when_any{
+    public:
+    protected:
+    private:
+        std::atomic<bool> m_done;
     };
 }
 
