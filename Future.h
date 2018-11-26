@@ -67,6 +67,8 @@ namespace xtask{
     template <class Type>
     class Future{
     public:
+        using value_type = Type;
+
         Future(std::shared_ptr<FutureBase<Type>> fut)
             :m_future(std::move(fut)){}
         Future(const Future &) = default;
@@ -139,6 +141,8 @@ namespace xtask{
     template <>
     class Future<void>{
     public:
+        using value_type = void;
+
         Future(std::shared_ptr<FutureBase<void>> fut)
                 :m_future(std::move(fut)){}
         Future(const Future &) = default;
@@ -200,6 +204,9 @@ namespace xtask{
                     }
                 }
             };
+            /*if(m_future->m_status == Status::done || !m_future->m_exception){
+                m_future->m_then();
+            }*/
             return Future<return_type_t<Function>>(ptr);
         }
     protected:
