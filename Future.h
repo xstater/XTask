@@ -110,18 +110,18 @@ namespace xtask{
         }
 
         template <class Function>
-        auto then(Function &&function,Policy policy = Policy::pool)
-            -> typename std::enable_if<
-                    std::is_void<return_type_t<Function>>::value,
-                    Future<return_type_t<Function>>
-                >::type{
+        auto then(Function &&function,Policy policy = Policy::pool) -> Future<return_type_t<Function>>{
             if(m_future->m_then)throw FutureThenError();
             auto ptr = std::make_shared<FutureBase<return_type_t<Function>>>();
             m_future->m_then_policy = policy;
             m_future->m_then = [ptr,function,this]()->void{
                 try{
                     ptr->m_status = Status::running;
-                    ptr->m_data = function(Future<Type>(*this));
+                    if constexpr (std::is_void<return_type_t<Function>>::value){
+                        function(m_future->m_data);
+                    }else{
+                        ptr->m_data = function(m_future->m_data);
+                    }
                     ptr->m_status = Status::done;
                 }catch(...){
                     ptr->m_exception = std::current_exception();
@@ -208,7 +208,11 @@ namespace xtask{
             m_future->m_then = [ptr,function,this]()->void{
                 try{
                     ptr->m_status = Status::running;
-                    function(Future<void>(*this));
+                    if constexpr (std::is_void<return_type_t<Function>>::value){
+                        function();
+                    }else{
+                        ptr->m_data = function();
+                    }
                     ptr->m_status = Status::done;
                 }catch(...){
                     ptr->m_exception = std::current_exception();
