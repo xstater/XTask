@@ -4,6 +4,7 @@
 #include <exception>
 #include <memory>
 #include <chrono>
+#include <type_traits>
 #include "return_type.h"
 #include "ThreadPool.h"
 
@@ -39,7 +40,8 @@ namespace xtask{
              m_status(Status::waiting),
              m_exception(nullptr),
              m_then(nullptr),
-             m_then_policy(Policy::pool){}
+             m_then_policy(Policy::pool),
+             m_called(false){}
         ~FutureBase() = default;
 
         Type m_data;
@@ -47,6 +49,7 @@ namespace xtask{
         std::exception_ptr m_exception;
         std::function<void()> m_then;
         Policy m_then_policy;
+        bool m_called;
     };
 
     template <>
@@ -55,13 +58,15 @@ namespace xtask{
                 :m_status(Status::waiting),
                  m_exception(nullptr),
                  m_then(nullptr),
-                 m_then_policy(Policy::pool){}
+                 m_then_policy(Policy::pool),
+                 m_called(false){}
         ~FutureBase() = default;
 
         Status m_status;
         std::exception_ptr m_exception;
         std::function<void()> m_then;
         Policy m_then_policy;
+        bool m_called;
     };
 
     template <class Type>
@@ -105,7 +110,11 @@ namespace xtask{
         }
 
         template <class Function>
-        auto then(Function &&function,Policy policy = Policy::pool) -> Future<return_type_t<Function>>{
+        auto then(Function &&function,Policy policy = Policy::pool)
+            -> typename std::enable_if<
+                    std::is_void<return_type_t<Function>>::value,
+                    Future<return_type_t<Function>>
+                >::type{
             if(m_future->m_then)throw FutureThenError();
             auto ptr = std::make_shared<FutureBase<return_type_t<Function>>>();
             m_future->m_then_policy = policy;
@@ -131,6 +140,20 @@ namespace xtask{
                     }
                 }
             };
+            if(!m_future->m_called && m_future->m_status == Status::done){
+                m_future->m_called = true;
+                switch(m_future->m_then_policy){
+                    case Policy::pool:
+                        ThreadPool::instance().addTask(m_future->m_then);
+                        break;
+                    case Policy::thread:
+                        std::async(std::launch::async,m_future->m_then);
+                        break;
+                    case Policy::synchronized:
+                        m_future->m_then();
+                        break;
+                }
+            }
             return Future<return_type_t<Function>>(ptr);
         }
     protected:
@@ -204,9 +227,20 @@ namespace xtask{
                     }
                 }
             };
-            /*if(m_future->m_status == Status::done || !m_future->m_exception){
-                m_future->m_then();
-            }*/
+            if(!m_future->m_called && m_future->m_status == Status::done){
+                m_future->m_called = true;
+                switch(m_future->m_then_policy){
+                    case Policy::pool:
+                        ThreadPool::instance().addTask(m_future->m_then);
+                        break;
+                    case Policy::thread:
+                        std::async(std::launch::async,m_future->m_then);
+                        break;
+                    case Policy::synchronized:
+                        m_future->m_then();
+                        break;
+                }
+            }
             return Future<return_type_t<Function>>(ptr);
         }
     protected:

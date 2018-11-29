@@ -34,6 +34,7 @@ namespace xtask{
                             m_future->m_exception = std::current_exception();
                         }
                         if(m_future->m_then){
+                            m_future->m_called = true;
                             switch(m_future->m_then_policy){
                                 case Policy::pool:
                                     ThreadPool::instance().addTask(m_future->m_then);
@@ -58,6 +59,7 @@ namespace xtask{
                             m_future->m_exception = std::current_exception();
                         }
                         if(m_future->m_then){
+                            m_future->m_called = true;
                             switch(m_future->m_then_policy){
                                 case Policy::pool:
                                     ThreadPool::instance().addTask(m_future->m_then);
@@ -81,6 +83,7 @@ namespace xtask{
                         m_future->m_exception = std::current_exception();
                     }
                     if(m_future->m_then){
+                        m_future->m_called = true;
                         switch(m_future->m_then_policy){
                             case Policy::pool:
                                 ThreadPool::instance().addTask(m_future->m_then);
@@ -138,6 +141,7 @@ namespace xtask{
                             m_future->m_exception = std::current_exception();
                         }
                         if(m_future->m_then){
+                            m_future->m_called = true;
                             switch(m_future->m_then_policy){
                                 case Policy::pool:
                                     ThreadPool::instance().addTask(m_future->m_then);
@@ -162,6 +166,7 @@ namespace xtask{
                             m_future->m_exception = std::current_exception();
                         }
                         if(m_future->m_then){
+                            m_future->m_called = true;
                             switch(m_future->m_then_policy){
                                 case Policy::pool:
                                     ThreadPool::instance().addTask(m_future->m_then);
@@ -185,6 +190,7 @@ namespace xtask{
                         m_future->m_exception = std::current_exception();
                     }
                     if(m_future->m_then){
+                        m_future->m_called = true;
                         switch(m_future->m_then_policy){
                             case Policy::pool:
                                 ThreadPool::instance().addTask(m_future->m_then);
