@@ -29,10 +29,45 @@ namespace xtask{
             LOW = 3
         };
 
-        ThreadPool(uint size = 0);
-        ~ThreadPool();
+        ThreadPool(uint size = 0)
+                :m_is_quit(false){
+            if(size == 0){
+                size = std::thread::hardware_concurrency();
+                size = size<=1?1:size-1;
+            }
 
-        void quit();
+            for(uint i=0;i<size;++i){
+                m_threads.emplace_back([this]()->void{
+                    std::function<void()> task;
+                    while(true){
+                        {
+                            std::unique_lock<std::mutex> lock(this->m_mutex);
+                            this->m_cond.wait(lock,
+                                              [this]()->bool{return this->m_is_quit || !this->m_tasks.empty();});
+                            if(this->m_is_quit && this->m_tasks.empty())return;
+                            task = std::move(this->m_tasks.top().m_task);
+                            this->m_tasks.pop();
+                        }
+                        task();
+                    }
+                });
+            }
+        }
+        ~ThreadPool(){
+            quit();
+        }
+
+        void quit(){
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                if(m_is_quit)return;
+                else m_is_quit = true;
+            }
+            m_cond.notify_all();
+            for(auto &itr:m_threads){
+                itr.join();
+            }
+        }
 
         template <class Function,class... ArgsType>
         auto addTask(Function &&f,ArgsType &&...args)
@@ -58,47 +93,6 @@ namespace xtask{
         std::mutex m_mutex;
         bool m_is_quit;
     };
-
-    ThreadPool::ThreadPool(uint size)
-            :m_is_quit(false){
-        if(size == 0){
-            size = std::thread::hardware_concurrency();
-            size = size<=1?1:size-1;
-        }
-
-        for(uint i=0;i<size;++i){
-            m_threads.emplace_back([this]()->void{
-                std::function<void()> task;
-                while(true){
-                    {
-                        std::unique_lock<std::mutex> lock(this->m_mutex);
-                        this->m_cond.wait(lock,
-                                          [this]()->bool{return this->m_is_quit || !this->m_tasks.empty();});
-                        if(this->m_is_quit && this->m_tasks.empty())return;
-                        task = std::move(this->m_tasks.top().m_task);
-                        this->m_tasks.pop();
-                    }
-                    task();
-                }
-            });
-        }
-    }
-
-    void ThreadPool::quit(){
-        {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            if(m_is_quit)return;
-            else m_is_quit = true;
-        }
-        m_cond.notify_all();
-        for(auto &itr:m_threads){
-            itr.join();
-        }
-    }
-
-    inline ThreadPool::~ThreadPool(){
-        quit();
-    }
 
     template <class Function,class... ArgsType>
     inline auto ThreadPool::addTask(Function &&f,ArgsType &&...args)
