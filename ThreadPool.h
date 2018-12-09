@@ -1,3 +1,5 @@
+#include <utility>
+
 #ifndef _XTASK_THREAD_POOL_H_
 #define _XTASK_THREAD_POOL_H_
 
@@ -29,7 +31,7 @@ namespace xtask{
             LOW = 3
         };
 
-        ThreadPool(uint size = 0)
+        explicit ThreadPool(uint size = 0)
                 :m_is_quit(false){
             if(size == 0){
                 size = std::thread::hardware_concurrency();
@@ -45,7 +47,7 @@ namespace xtask{
                             this->m_cond.wait(lock,
                                               [this]()->bool{return this->m_is_quit || !this->m_tasks.empty();});
                             if(this->m_is_quit && this->m_tasks.empty())return;
-                            task = std::move(this->m_tasks.top().m_task);
+                            task = this->m_tasks.top().m_task;
                             this->m_tasks.pop();
                         }
                         task();
@@ -71,16 +73,28 @@ namespace xtask{
 
         template <class Function,class... ArgsType>
         auto addTask(Function &&f,ArgsType &&...args)
-        -> std::future<typename std::result_of<Function(ArgsType...)>::type>;
+        -> std::future<typename std::result_of<Function(ArgsType...)>::type>{
+            return addTask(TaskPriority::DEFAULT,std::forward<Function>(f),std::forward<ArgsType>(args)...);
+        }
 
         template <class Function,class... ArgsType>
         auto addTask(TaskPriority priority,Function &&f,ArgsType &&...args)
-        -> std::future<typename std::result_of<Function(ArgsType...)>::type>;
+        -> std::future<typename std::result_of<Function(ArgsType...)>::type>{
+            using ReturnType = typename std::result_of<Function(ArgsType...)>::type;
+            auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<Function>(f),std::forward<ArgsType>(args)...));
+            std::future<ReturnType> ans = task->get_future();
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_tasks.emplace(priority,[task]()->void{(*task)();});
+            }
+            m_cond.notify_one();
+            return ans;
+        }
     protected:
     private:
         struct Task{
             Task(TaskPriority priority,std::function<void()> task)
-                    :m_priority(priority),m_task(task){}
+                    :m_priority(priority),m_task(std::move(task)){}
             friend bool operator<(Task a,Task b){
                 return a.m_priority > b.m_priority;
             }
@@ -94,28 +108,6 @@ namespace xtask{
         bool m_is_quit;
     };
 
-    template <class Function,class... ArgsType>
-    inline auto ThreadPool::addTask(Function &&f,ArgsType &&...args)
-    -> std::future<typename std::result_of<Function(ArgsType...)>::type>{
-        return addTask(TaskPriority::DEFAULT,std::forward<Function>(f),std::forward<ArgsType>(args)...);
-    }
-
-    template <class Function,class... ArgsType>
-    auto ThreadPool::addTask(TaskPriority priority,Function &&f,ArgsType &&...args)
-    -> std::future<typename std::result_of<Function(ArgsType...)>::type>{
-        using ReturnType = typename std::result_of<Function(ArgsType...)>::type;
-        auto task = std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<Function>(f),std::forward<ArgsType>(args)...));
-        std::future<ReturnType> ans = task->get_future();
-        {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            if(m_is_quit){
-                throw std::runtime_error("ThreadPool:Add task failed!");
-            }
-            m_tasks.emplace(priority,[task]()->void{(*task)();});
-        }
-        m_cond.notify_one();
-        return ans;
-    }
 }
 
 #endif //_XTASK_THREAD_POOL_H_
