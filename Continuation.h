@@ -70,6 +70,14 @@ namespace xtask{
         Continuation &operator=(const Continuation &) = default;
         Continuation &operator=(Continuation &&) = default;
 
+        Type get(){
+            wait();
+            if(m_ptr->then_exception){
+                std::rethrow_exception(m_ptr->then_exception);
+            }
+            return std::move(m_ptr->data);
+        }
+
         void wait()const noexcept{
             while(m_ptr->status != Status::done){}
         }
@@ -216,6 +224,13 @@ namespace xtask{
 
         Continuation &operator=(const Continuation &) = default;
         Continuation &operator=(Continuation &&) = default;
+
+        void get(){
+            wait();
+            if(m_ptr->then_exception){
+                std::rethrow_exception(m_ptr->then_exception);
+            }
+        }
 
         void wait()const noexcept{
             while(m_ptr->status != Status::done){}

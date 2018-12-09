@@ -6,8 +6,6 @@
 namespace xtask{
     template <class Iterator>
     Task<void> when_all(Iterator begin,Iterator end){
-        using value_type = typename std::iterator_traits<Iterator>::value_type::value_type;
-
         return Task<void>([begin,end]()->void{
             for(auto itr = begin;itr != end; ++itr){
                 itr->wait();
@@ -17,8 +15,6 @@ namespace xtask{
 
     template <class Iterator>
     Task<void> when_any(Iterator begin,Iterator end){
-        using value_type = typename std::iterator_traits<Iterator>::value_type::value_type;
-
         auto flag_ptr = std::make_shared<bool>(false);
         auto mutex_ptr = std::make_shared<std::mutex>();
         auto task_ptr = std::make_shared<TaskBase<void>>();

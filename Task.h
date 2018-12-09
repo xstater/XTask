@@ -96,6 +96,14 @@ namespace xtask{
             }
         }
 
+        Type get(){
+            wait();
+            if(m_ptr->exception){
+                std::rethrow_exception(m_ptr->exception);
+            }
+            return std::move(m_ptr->data);
+        }
+
         void wait()const noexcept{
             while(m_ptr->status != Status::done){}
         }
@@ -214,13 +222,13 @@ namespace xtask{
             if(m_ptr->status == Status::done){
                 switch(m_ptr->then_policy){
                     case Policy::pool:
-                        ThreadPool::instance().addTask(m_ptr->then,m_ptr->then_exception);
+                        ThreadPool::instance().addTask(m_ptr->then,m_ptr->exception);
                         break;
                     case Policy::synchronized:
-                        m_ptr->then(m_ptr->then_exception);
+                        m_ptr->then(m_ptr->exception);
                         break;
                     case Policy::thread:
-                        std::thread t(m_ptr->then,m_ptr->then_exception);
+                        std::thread t(m_ptr->then,m_ptr->exception);
                         t.detach();
                         break;
                 }
@@ -256,7 +264,7 @@ namespace xtask{
                         m_ptr->then( m_ptr->exception);
                         break;
                     case Policy::thread:
-                        std::thread t(m_ptr->then,m_ptr->then_exception);
+                        std::thread t(m_ptr->then,m_ptr->exception);
                         t.detach();
                         break;
                 }
@@ -310,6 +318,13 @@ namespace xtask{
                     std::thread t(std::bind(&Task::m_run,this));
                     t.detach();
                     break;
+            }
+        }
+
+        void get(){
+            wait();
+            if(m_ptr->exception){
+                std::rethrow_exception(m_ptr->exception);
             }
         }
 
